@@ -86,9 +86,67 @@ function queryElement (selector, context) {
   !context && (context = document);
 
   // 如果是单个选择器
-  if (/^[#.]?$/.test(selector)) {
+  if (/^[#.]?\w+$/.test(selector)) {
+    const firstChar = selector.charAt(0);
+    const remainStr = selector.slice(1);
 
+    if (firstChar === '#') {
+      // id 选择器
+      return settleArray([context.getElementById(remainStr)]);
+    } else if (firstChar === '.') {
+      // class 选择器
+      return toArray(context.getElementByClassName(remainStr));
+    } else if (selector === 'body') {
+      // body
+      return [ document.body ];
+    }
+
+    // 标签选择器
+    return toArray(document.getElementsByTagName(selector));
   }
+
+  // 后代选择器，多个选择器等复杂选择器
+  return toArray(document.querySelectorAll(selector));
+}
+
+function operationClass (self, method, className, isToggle) {
+  if (className == null) {
+    if (method === 'add') {
+      return self;
+    }
+
+    return self.removeAttr('class');
+  }
+
+  const classNameType = getType(className);
+  let classNames;
+
+  return self.each(function () {
+    if (classNameType === 'function') {
+      const callbackValue = className.call(this, this.className);
+
+      if (!callbackValue) {
+        return;
+      }
+
+      classNames = callbackValue.trim().split(' ');
+    }
+    else if (classNameType === 'string') {
+      classNames = className.trim().split(' ');
+    }
+
+    for (let name of classNames) {
+      if (name) {
+        isToggle == null
+          ? this.classList[method](name)
+          : this.classList.toggle(name, isToggle);
+      }
+    }
+
+  });
+}
+
+function registerEvent (self, eventName, handler) {
 
 }
 
@@ -123,20 +181,88 @@ function Init (selector, context) {
   this.length = this.dom.length;
 }
 
+Init.prototype.each = function (callback) {
+  const dom = this.dom;
+
+  dom.forEach((node, index) => {
+    callback.call(node, index, node);
+  });
+
+  return this;
+};
+
+Init.prototype.get = function (index) {
+  if (index == null) {
+    return this.dom;
+  }
+
+  return index < 0
+    ? this.dom[this.length + index]
+    : this.dom[index];
+};
+
+Init.prototype.attr = function (attrName, attrValue) {
+  const attrValueType = getType(attrValue);
+  const isFunc = attrValueType === 'function';
+
+  if (attrValueType === 'string' || isFunc) {
+    return this.each(function () {
+      if (this.nodeType !== 1) {
+        return;
+      }
+
+      this.setAttribute(
+        name,
+        isFunc ? attrValue.apply(this, this.getAttribute(attrName)) : attrValue
+      );
+    });
+  }
+
+  if (attrValueType === 'object') {
+    return this.each(function () {
+      Object.keys(attrValue).forEach(attr => {
+        this.setAttribute(attr, attrValue[attr]);
+      });
+    });
+  }
+
+  const node = this.get(0);
+
+  if (!node || node.nodeType !== 1) {
+    return void 0;
+  }
+
+  return node.getAttribute(attrName) || '';
+};
+
+Init.prototype.removeAttr = function (attrName) {
+  if (attrName) {
+    const attrs = attrName.trim().split(' ');
+
+    return this.each(function () {
+      for (let attr of attrs) {
+        this.removeAttribute(attr);
+      }
+    });
+  }
+
+  return this;
+};
+
 Init.prototype.ready = function () {
 
 };
 
-Init.prototype.addClass = function () {
-
+Init.prototype.addClass = function (className) {
+  return operationClass(this, 'add', className);
 };
 
-Init.prototype.removeClass = function () {
-
+Init.prototype.removeClass = function (className) {
+  return operationClass(this, 'remove', className);
 };
 
-Init.prototype.toggleClass = function () {
-
+Init.prototype.toggleClass = function (className, isToggle) {
+  return operationClass(this, 'toggle', className, isToggle);
 };
 
 
