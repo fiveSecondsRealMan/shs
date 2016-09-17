@@ -4,24 +4,9 @@
 
 import path from 'path';
 import webpack from 'webpack';
-import webpackDevServer from 'webpack-dev-server';
-import htmlPlugin from 'html-webpack-plugin';
 
-/**
- 定义开发环境和生产环境路径
-**/
-
-const root = path.join(__dirname);
-const dev = path.join(root, 'src');
-const dist = path.join(root, 'dist');
-
-/**
-  定义协议、主机、端口、域名
-**/
-const protocol = 'http';
-const host = 'localhost';
-const port = 8080;
-const domain = protocol + '://' + host + ':' + port;
+const dev = path.join(__dirname, 'src');
+const dist = path.join(__dirname, 'dist');
 
 /**
   webpack 基础配置
@@ -30,7 +15,9 @@ const domain = protocol + '://' + host + ':' + port;
 const baseConfig = {
   context: dev,
 
-  entry: 'shs.js',
+  entry: {
+    shs: './shs.js'
+  },
 
   output: {
     path: dist,
@@ -52,11 +39,20 @@ const baseConfig = {
   }
 };
 
-/**
-  webpack 开发环境配置
-**/
+const distConfig = Object.assign({}, baseConfig);
+const plugins = distConfig.plugins || (distConfig.plugins = []);
 
-const devConfig = Object.assign({}, baseConfig);
+plugins.push(
+  new webpack.optimize.UglifyJsPlugin({
+    compress: {
+      warnings: true
+    }
+  }),
 
-devConfig.output.filename = '[name].js';
-devConfig.output.publicPath = domain;
+  new webpack.NoErrorsPlugin()
+);
+
+
+webpack(distConfig, (err, stat) => {
+  console.log(stat.toString());
+})
