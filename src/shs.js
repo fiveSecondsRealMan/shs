@@ -60,6 +60,10 @@ function getType (any) {
       .toLowerCase();
 }
 
+function blankSplit (str) {
+  return str.trim().split(' ');
+}
+
 function createElement (HTMLStr) {
   const tmpNode = document.createElement('div');
   const tag = /\w/.exec(HTMLStr)[0];
@@ -129,10 +133,10 @@ function operationClass (self, method, className, isToggle) {
         return;
       }
 
-      classNames = callbackValue.trim().split(' ');
+      classNames = blankSplit(callbackValue);
     }
     else if (classNameType === 'string') {
-      classNames = className.trim().split(' ');
+      classNames = blankSplit(className)
     }
 
     for (let name of classNames) {
@@ -142,12 +146,62 @@ function operationClass (self, method, className, isToggle) {
           : this.classList.toggle(name, isToggle);
       }
     }
-
   });
 }
 
-function registerEvent (self, eventName, handler) {
+function operationEventListener (self, method, eventName, handler) {
+  if (eventName == null) {
+    return self;
+  }
 
+  return self.each(function () {
+    if (method === 'add') {
+      addEventListener(this, eventName, handler);
+    } else if (method === 'remove') {
+      removeEventListener(this, eventName, handler);
+    }
+  });
+}
+
+function addEventListener (el, eventName, addHandler) {
+  const eventNames = blankSplit(eventName);
+
+  if (!getEvents(el)) {
+    el.eventListeners = {};
+  }
+
+  eventNames.forEach(evtName => {
+    (etEvents(el)[evtName] || (getEvents(el)[evtName] = [])).push(addHandler);
+    el.addEventListener(evtName, addHandler, false);
+  });
+}
+
+function clearEventHandler (handlers, removeHandler) {
+  return handlers.filter(handler => {
+    return removeHandler && handler !== removeHandler;
+  });
+}
+
+function removeEventListener (el, eventName, removeHandler) {
+  const addedHandlers = getEvents(el) && getEvents(el)[eventName];
+
+  if (!addedHandlers) {
+    return;
+  }
+
+  getEvents(el)[eventName] = clearEventHandler(addedHandlers, removeHandler);
+
+  for (let addedHandler of addedHandlers) {
+    if (removeHandler && removeHandler !== addedHandler) {
+      continue;
+    }
+
+    el.removeEventListener(eventName, addedHandler, false);
+  }
+}
+
+function getEvents (el) {
+  return el.eventsListeners;
 }
 
 /**
@@ -201,6 +255,14 @@ Init.prototype.get = function (index) {
     : this.dom[index];
 };
 
+Init.prototype.on = function (eventName, handler) {
+  return operationEventListener(this, 'add', eventName, handler);
+};
+
+Init.prototype.off = function () {
+  return operationEventListener(this, 'remove', eventName, handler);
+};
+
 Init.prototype.attr = function (attrName, attrValue) {
   const attrValueType = getType(attrValue);
   const isFunc = attrValueType === 'function';
@@ -237,7 +299,7 @@ Init.prototype.attr = function (attrName, attrValue) {
 
 Init.prototype.removeAttr = function (attrName) {
   if (attrName) {
-    const attrs = attrName.trim().split(' ');
+    const attrs = blankSplit(attrName);
 
     return this.each(function () {
       for (let attr of attrs) {
@@ -249,8 +311,11 @@ Init.prototype.removeAttr = function (attrName) {
   return this;
 };
 
-Init.prototype.ready = function () {
+Init.prototype.ready = function (handler) {
+  this.dom = [document];
+  this.length = 1;
 
+  return this.on('DOMContentLoaded', handler);
 };
 
 Init.prototype.addClass = function (className) {
