@@ -4,6 +4,8 @@
  * Released under the MIT license
  */
 
+ const nativeKeys = Object.keys;
+
  const specialTagMap = {
    li: {
      beginInput: '<ul>',
@@ -11,10 +13,17 @@
    }
  };
 
+ const cssNumberNames = [
+   'z-index',
+   'opacity',
+   'zoom',
+   'line-height',
+   'font-weight'
+ ];
+
  /**
   公共函数
  **/
-
 function toArray (likeArr) {
   const arr = [];
 
@@ -23,6 +32,16 @@ function toArray (likeArr) {
   }
 
   return arr;
+}
+
+function inArray (arr, value) {
+  return arr.indexOf(value) >= 0;
+}
+
+function upperToCamel (str) {
+  return str.replace(/[A-Z]/g, match =>
+    '-' + match.toLowerCase();
+  )
 }
 
 /**
@@ -86,6 +105,9 @@ function createElement (HTMLStr) {
   return node;
 }
 
+/**
+  ------ selector query ------
+**/
 function queryElement (selector, context) {
   !context && (context = document);
 
@@ -113,6 +135,9 @@ function queryElement (selector, context) {
   return toArray(document.querySelectorAll(selector));
 }
 
+/**
+  ------ dom className ------
+**/
 function operationClass (self, method, className, isToggle) {
   if (className == null) {
     if (method === 'add') {
@@ -149,6 +174,9 @@ function operationClass (self, method, className, isToggle) {
   });
 }
 
+/**
+  ------ dom event ------
+**/
 function operationEventListener (self, method, eventName, handler) {
   if (eventName == null) {
     return self;
@@ -202,6 +230,40 @@ function removeEventListener (el, eventName, removeHandler) {
 
 function getEvents (el) {
   return el.eventsListeners;
+}
+
+/**
+  ------ dom css ------
+**/
+function cssImplicitAccessor (el) {
+  return document
+    .defaultView
+    .getComputedStyle(el, null)
+    .getPropertyValue;
+}
+
+function operationCss (cssName, cssValue) {
+  if (inArray(cssNumberNames, cssName)) {
+    return cssValue;
+  }
+
+  if (!/\D/.test(cssValue)) {
+    return cssValue + 'px';
+  }
+
+  return cssValue;
+}
+
+function addCss (el, cssText) {
+  if (getType(cssText) === 'object') {
+    cssText = JSON.stringify(cssText);
+  }
+
+  cssText = cssText
+    .replace(/[{}'"]/g, '')
+    .replace(/,/g, ';');
+
+  el.style.cssText += cssText;
 }
 
 /**
@@ -265,6 +327,7 @@ Init.prototype.off = function () {
 
 Init.prototype.attr = function (attrName, attrValue) {
   const attrValueType = getType(attrValue);
+  const attrNameType = getType(attrName);
   const isFunc = attrValueType === 'function';
 
   if (attrValueType === 'string' || isFunc) {
@@ -280,10 +343,10 @@ Init.prototype.attr = function (attrName, attrValue) {
     });
   }
 
-  if (attrValueType === 'object') {
+  if (attrNameType === 'object') {
     return this.each(function () {
-      Object.keys(attrValue).forEach(attr => {
-        this.setAttribute(attr, attrValue[attr]);
+      nativeKeys(attrName).forEach(attr => {
+        this.setAttribute(attr, attrName[attr]);
       });
     });
   }
@@ -312,7 +375,7 @@ Init.prototype.removeAttr = function (attrName) {
 };
 
 Init.prototype.ready = function (handler) {
-  this.dom = [document];
+  this.dom = [ document ];
   this.length = 1;
 
   return this.on('DOMContentLoaded', handler);
@@ -328,6 +391,58 @@ Init.prototype.removeClass = function (className) {
 
 Init.prototype.toggleClass = function (className, isToggle) {
   return operationClass(this, 'toggle', className, isToggle);
+};
+
+Init.prototype.hasClass = function (className) {
+  return this.dom.some(el =>
+    el.classList.contains(className)
+  );
+};
+
+Init.prototype.css = function (cssName, cssValue) {
+  const cssValueType = getType(cssValue);
+  const cssNameType = getType(cssName);
+  let isFunc = cssValueType === 'function';
+  let disposedCssName;
+
+  if (cssValue) {
+    disposedCssName = upperToCamel(cssName);
+
+    return this.each(function () {
+      isFunc && (cssValue = cssValue.call(this, cssImplicitAccessor(this)(disposedCssName)));
+
+      if (this.nodeType !== 1) {
+        return;
+      }
+
+      this.style[ disposedCssName ] = operationCss(disposedCssName, cssValue);
+    });
+  }
+
+  if (cssNameType === 'object') {
+    return this.each(function () {
+      const disposedValue = {};
+
+      nativeKeys(cssName).forEach(name => {
+        disposedCssName = upperToCamel(name);
+        cssValue = cssName[name];
+        isFunc = getType(cssValue) === 'function';
+        isFunc && (cssValue = cssImplicitAccessor(this)(disposedCssName));
+
+        disposedValue[disposedCssName] = cssValue;
+      });
+
+      addCss(this, disposedValue);
+    });
+  }
+
+  const node = this.get(0);
+
+  if (!node || node.nodeType !== 1) {
+    return void 0;
+  }
+
+  return cssImplicitAccessor(node)(upperToCamel(name)) || '';
 };
 
 
