@@ -4,17 +4,15 @@
     <meta charset="utf-8" />
   </head>
   <body>
-    <script src="dist/shs.min.js"></script>
+    <script src="http://cdn.bootcss.com/zepto/1.0rc1/zepto.min.js"></script>
+    <!--script src="dist/shs.min.js"></script-->
+    <span id="gn">1</span>
     <div id="md">
-      <div>
-        wjj
-        <span>ssb</span>
-      </div>
+
     </div>
     <script>
 
-      var md = document.getElementById('md');
-      console.log(md.getElementsByTagName('*'));
+      console.log($('#gn').appendTo($('#md')));
       // md.classList.toggle('xx', true);
       //
       // setTimeout(function () {

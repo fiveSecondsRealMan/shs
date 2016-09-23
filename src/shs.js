@@ -112,7 +112,7 @@ function queryElement (selector, context) {
   !context && (context = document);
 
   // 如果是单个选择器
-  if (/^[#.]?\w+$/.test(selector)) {
+  if (/^[#.]?[\w-*]+$/.test(selector)) {
     const firstChar = selector.charAt(0);
     const remainStr = selector.slice(1);
 
@@ -286,16 +286,45 @@ const domPositionMethod = {
   }
 };
 
-function operationDomPosition (self, method, ...els) {
-  for (let el of els) {
+function operationDomPosition (self, method, els) {
+  els.forEach((el, index) => {
     const type = getType(el);
 
     if (type === 'string') {
-
+      self.each(function () {
+        this.insertAdjacentHTML(method, el);
+      });
     } else if (type === 'function') {
+      self.each(function () {
+        const funcValue = el.call(this, this.innerHTML);
+        this.insertAdjacentHTML(method, funcValue);
+      });
+    } else {
 
+      if (el.nodeType === 1) {
+        throw new Error('参数不能是Node类型');
+        return;
+      }
+
+      if (el instanceof Init) {
+        const operationingEls = el.get();
+        let progenys, operationingEl, fragment;
+
+        self.each(function () {
+          for (operationingEl of operationingEls) {
+            fragment = document.createDocumentFragment();
+            progenys = queryElement('*', operationingEl);
+
+            progenys.forEach(progeny =>
+              fragment.appendChild(progeny);
+            );
+          }
+
+          domPositionMethod[method](this, fragment);
+        });
+      }
     }
-  }
+  });
 }
 
 /**
@@ -477,12 +506,29 @@ Init.prototype.css = function (cssName, cssValue) {
   return cssImplicitAccessor(node)(upperToCamel(name)) || '';
 };
 
-Init.prototype.before = function () {
-
+Init.prototype.before = function (...els) {
+  operationDomPosition(self, 'beforebegin', els);
+  return this;
 };
 
-Init.prototype.after = function () {
+Init.prototype.after = function (...els) {
+  operationDomPosition(self, 'afterend', els);
+  return this;
+};
 
+Init.prototype.append = function (...els) {
+  operationDomPosition(self, 'beforeend', els);
+  return this;
+};
+
+Init.prototype.prepend = function (...els) {
+  operationDomPosition(self, 'afterbegin', els);
+  return this;
+};
+
+Init.prototype.appendTo = function (target) {
+  operationDomPosition($(target), 'beforeend', this);
+  return this;
 };
 
 
