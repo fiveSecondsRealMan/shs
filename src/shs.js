@@ -267,6 +267,38 @@ function addCss (el, cssText) {
 }
 
 /**
+  ------ dom position ------
+**/
+const domPositionMethod = {
+  beforebegin(el, beAddedEl) {
+    const parentEl = el.parentNode;
+    parentEl.insertBefore(beAddedEl, el);
+  },
+  afterend(el, beAddedEl) {
+    const parentEl = el.parentNode;
+    parentEl.insertBefore(beAddedEl, el.nextSibling);
+  },
+  beforeend(el, beAddedEl) {
+    el.insertBefore(beAddedEl);
+  },
+  afterbegin(el, beAddedEl) {
+    el.insertBefore(beAddedEl, el.firstChild);
+  }
+};
+
+function operationDomPosition (self, method, ...els) {
+  for (let el of els) {
+    const type = getType(el);
+
+    if (type === 'string') {
+
+    } else if (type === 'function') {
+
+    }
+  }
+}
+
+/**
  * 构造Shs实例
  * @param selector { String | Array | NodeList | Node | Function | Init } 选择器
  * @param context { Node }
@@ -443,6 +475,14 @@ Init.prototype.css = function (cssName, cssValue) {
   }
 
   return cssImplicitAccessor(node)(upperToCamel(name)) || '';
+};
+
+Init.prototype.before = function () {
+
+};
+
+Init.prototype.after = function () {
+
 };
 
 
